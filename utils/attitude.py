@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+"""６自由度機体シミュレーション用のクラス."""
+
 import numpy as np
 from numpy.linalg import inv
 from math import sin, cos, pi, sqrt
@@ -14,7 +17,12 @@ class Attitude6DoF(object):
         super(Attitude6DoF, self).__init__()
         self.quartanion = np.array([1.0, 0.0, 0.0, 0.0])
         # [q0, q1, q2, q3] q_hat = cos(theta/2) + vec_n * sin(theta / 2)
-        self.derivativeOfQuartanion
+        self.omegaBody = np.array([0.0, 0.0, 0.0])
+        self.momentOfInertia = np.array([
+            [0.001, 0,         0],
+            [0, 0.0001,        0],
+            [0, 0, 0.00020633122]
+        ])
 
     def rotationOfPositionVector(self, r):
         """位置ベクトルを回転クオータニオンに基づき回転させる.
@@ -35,8 +43,8 @@ class Attitude6DoF(object):
         return rRotated
 
     def inertialVectorInBodyFrame(self, r):
-        """慣性系上の位置ベクトルを機体座標系で表す。"""
-        if len(r)!=3:
+        """慣性系上の位置ベクトルを機体座標系で表す."""
+        if len(r) != 3:
             raise RuntimeError("Position vector must be three dimentional.")
 
         q = self.quartanion
@@ -95,26 +103,29 @@ class Attitude6DoF(object):
         M = moment_body
         h = np.dot(I, w)  # 角運動量
 
-        dwdt = np.dot(I_inv, (M - np.cross(w, h)))  # TODO: 妥当性チェック
+        dwdt = np.dot(I_inv, (M - np.cross(w, h)))
         return dwdt
 
-    def updateOmegaBody(self, moment_body):
+    def updateOmegaBody(self, dt, moment_body):
         """機体座標系の角速度をモーメントから更新する."""
+        self.omegaBody += np.dot(dt, self.derivativeOfOmegaBody(moment_body))
         pass
+
+    # TODO: 並進運動の運動方程式
 
 
 def testRotation(omega):
-    """クラスの動作テスト"""
+    """クラスの動作テスト."""
     att = Attitude6DoF()
-    nx=np.zeros(3,dtype=float)
-    ny=np.zeros(3,dtype=float)
-    nz=np.zeros(3,dtype=float)
+    nx = np.zeros(3, dtype=float)
+    ny = np.zeros(3, dtype=float)
+    nz = np.zeros(3, dtype=float)
     for i in range(1000):
-        att.updateQuartanion(omega,1/1000)
-        nx = att.rotationOfPositionVector(np.array([1,0,0]))
-        ny = att.rotationOfPositionVector(np.array([0,1,0]))
-        nz = att.rotationOfPositionVector(np.array([0,0,1]))
-    return nx,ny,nz
+        att.updateQuartanion(omega, 1/1000)
+        nx = att.rotationOfPositionVector(np.array([1, 0, 0]))
+        ny = att.rotationOfPositionVector(np.array([0, 1, 0]))
+        nz = att.rotationOfPositionVector(np.array([0, 0, 1]))
+    return nx, ny, nz
 
 
 def testInertialVectorInBodyFrame():
