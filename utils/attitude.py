@@ -15,6 +15,7 @@ class Attitude6DoF(object):
     def __init__(self):
         """初期化."""
         super(Attitude6DoF, self).__init__()
+        self.velocityBody = np.array([0.0, 0.0, 0.0])
         self.quartanion = np.array([1.0, 0.0, 0.0, 0.0])
         # [q0, q1, q2, q3] q_hat = cos(theta/2) + vec_n * sin(theta / 2)
         self.omegaBody = np.array([0.0, 0.0, 0.0])
@@ -112,6 +113,21 @@ class Attitude6DoF(object):
         pass
 
     # TODO: 並進運動の運動方程式
+    def gravityBody(self):
+        """現在の姿勢から, 重力を機体座標系の成分に分解する."""
+        g_inertial = np.array([0.0, 0.0, 9.81])
+        g_body = self.inertialVectorInBodyFrame(g_inertial)
+        return g_body
+
+    def derivativeOfVelocityBody(self, force_body):
+        """機体座標系の力から機体座標系上の機体速度の時間微分を求める."""
+        w = self.omegaBody
+        vc = self.velocityBody
+        F = force_body
+        m = self.weight
+
+        dvdt = np.dot(F, 1/m) - np.cross(w, vc)
+        return dvdt
 
 
 def testRotation(omega):
