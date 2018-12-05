@@ -34,10 +34,23 @@ class Attitude6DoF(object):
             raise RuntimeError("Position vector must be three dimentional.")
 
         q = self.quartanion
+
+        A11 = q[0]**2+q[1]**2-q[2]**2-q[3]**2
+        A12 = 2*(q[1]*q[2]-q[0]*q[3])
+        A13 = 2*(q[1]*q[3]+q[0]*q[2])
+
+        A21 = 2*(q[1]*q[2]+q[0]*q[3])
+        A22 = q[0]**2-q[1]**2+q[2]**2-q[3]**2
+        A23 = 2*(q[2]*q[3]-q[0]*q[1])
+
+        A31 = 2*(q[1]*q[3]-q[0]*q[2])
+        A32 = 2*(q[2]*q[3]+q[0]*q[1])
+        A33 = q[0]**2-q[1]**2-q[2]**2+q[3]**2
+
         A = np.array([
-            [q[0]**2+q[1]**2-q[2]**2-q[3]**2, 2*(q[1]*q[2]-q[0]*q[3]),         2*(q[1]*q[3]+q[0]*q[2])        ],
-            [2*(q[1]*q[2]+q[0]*q[3]),         q[0]**2-q[1]**2+q[2]**2-q[3]**2, 2*(q[2]*q[3]-q[0]*q[1])        ],
-            [2*(q[1]*q[3]-q[0]*q[2]),         2*(q[2]*q[3]+q[0]*q[1]),         q[0]**2-q[1]**2-q[2]**2+q[3]**2]
+            [A11, A12, A13],
+            [A21, A22, A23],
+            [A31, A32, A33]
         ])
         rRotated = np.dot(A, r)
 
@@ -49,12 +62,18 @@ class Attitude6DoF(object):
             raise RuntimeError("Position vector must be three dimentional.")
 
         q = self.quartanion
+
+        q0 = q[0]
+        q1 = q[1]
+        q2 = q[2]
+        q3 = q[3]
+
         A = np.array([
-            [q[0]**2+q[1]**2-q[2]**2-q[3]**2, 2*(q[1]*q[2]+q[0]*q[3]),         2*(q[1]*q[3]-q[0]*q[2])        ],
-            [2*(q[1]*q[2]-q[0]*q[3]),         q[0]**2-q[1]**2+q[2]**2-q[3]**2, 2*(q[2]*q[3]+q[0]*q[1])        ],
-            [2*(q[1]*q[3]+q[0]*q[2]),         2*(q[2]*q[3]-q[0]*q[1]),         q[0]**2-q[1]**2-q[2]**2+q[3]**2]
+            [q0**2+q1**2-q2**2-q3**2, 2*(q1*q2+q0*q3), 2*(q1*q3-q0*q2)],
+            [2*(q1*q2-q0*q3), q0**2-q1**2+q2**2-q3**2, 2*(q2*q3+q0*q1)],
+            [2*(q1*q3+q0*q2), 2*(q2*q3-q0*q1), q0**2-q1**2-q2**2+q3**2]
         ])
-        rRotated = np.dot(A,r)
+        rRotated = np.dot(A, r)
 
         return rRotated
 
@@ -99,10 +118,10 @@ class Attitude6DoF(object):
         式は『航空機力学入門』（加藤） (1.20)式より
         """
         w = self.omegaBody
-        I = self.momentOfInertia
-        I_inv = inv(I)
+        I_body = self.momentOfInertia
+        I_inv = inv(I_body)
         M = moment_body
-        h = np.dot(I, w)  # 角運動量
+        h = np.dot(I_body, w)  # 角運動量
 
         dwdt = np.dot(I_inv, (M - np.cross(w, h)))
         return dwdt
@@ -151,13 +170,15 @@ def testInertialVectorInBodyFrame():
     rot = np.array([
         [cos(-psi), -sin(-psi), 0],
         [sin(-psi),  cos(-psi), 0],
-        [        0,          0, 1]
+        [0, 0, 1]
     ])
     xi = np.array([cos(the), sin(the), 0.0])
     xb_answer = np.dot(rot, xi)
 
     att = Attitude6DoF()
-    att.quartanion = [cos(psi/2), 0.0*sin(psi/2), 0.0*sin(psi/2), 1.0*sin(psi/2)]
+
+    test_q = [cos(psi/2), 0.0*sin(psi/2), 0.0*sin(psi/2), 1.0*sin(psi/2)]
+    att.quartanion = np.array(test_q)
     xb_test = att.inertialVectorInBodyFrame(xi)
 
     print(f'error: {xb_test},{xb_answer}')
