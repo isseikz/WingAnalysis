@@ -31,7 +31,7 @@ class Attitude6DoF(object):
         クオータニオンが機体の姿勢変化を表しているなら、機体座標上の位置ベクトルを慣性座標系の位置ベクトルに変換する
         """
         if len(r) != 3:
-            raise RuntimeError("Position vector must be three dimentional.")
+            raise RuntimeError("Inputted vector must be three dimentional.")
 
         q = self.quartanion
 
@@ -56,8 +56,12 @@ class Attitude6DoF(object):
 
         return rRotated
 
-    def inertialVectorInBodyFrame(self, r):
-        """慣性系上の位置ベクトルを機体座標系で表す."""
+    def bodyVector2InertialVector(self, r):
+        """機体座標系上のベクトルを慣性座標系の要素に分解する."""
+        return self.rotationOfPositionVector(r)
+
+    def inertialVector2BodyVector(self, r):
+        """慣性系上のベクトルを機体座標系で表す."""
         if len(r) != 3:
             raise RuntimeError("Position vector must be three dimentional.")
 
@@ -77,7 +81,7 @@ class Attitude6DoF(object):
 
         return rRotated
 
-    def derivativeOfQuartanion(self, omega_inertial):
+    def calcDerivativeOfQuartanion(self, omega_inertial):
         """位置ベクトルが角速度ω（慣性系）で回転するときのクオータニオンの時間微分."""
         if len(omega_inertial) != 3:
             raise RuntimeError("Angular velocity must be three dimentional.")
@@ -112,7 +116,7 @@ class Attitude6DoF(object):
         self.quartanion /= self.normOfQuartanion()  # 正規化
         return self.quartanion
 
-    def derivativeOfOmegaBody(self, moment_body):
+    def calcDerivativeOfOmegaBody(self, moment_body):
         """機体座標系の角速度の微分をモーメントと現在の状態から求める.
 
         式は『航空機力学入門』（加藤） (1.20)式より
@@ -129,24 +133,29 @@ class Attitude6DoF(object):
     def updateOmegaBody(self, dt, moment_body):
         """機体座標系の角速度をモーメントから更新する."""
         self.omegaBody += np.dot(dt, self.derivativeOfOmegaBody(moment_body))
-        pass
+        return self.omegaBody
 
     # TODO: 並進運動の運動方程式
     def gravityBody(self):
         """現在の姿勢から, 重力を機体座標系の成分に分解する."""
         g_inertial = np.array([0.0, 0.0, 9.81])
-        g_body = self.inertialVectorInBodyFrame(g_inertial)
+        g_body = self.inertialVector2BodyVector(g_inertial)
         return g_body
 
-    def derivativeOfVelocityBody(self, force_body):
+    def calcDerivativeOfVelocityBody(self, force_body):
         """機体座標系の力から機体座標系上の機体速度の時間微分を求める."""
         w = self.omegaBody
         vc = self.velocityBody
         F = force_body
         m = self.weight
 
-        dvdt = np.dot(F, 1/m) - np.cross(w, vc)
-        return dvdt
+        dvcdt = np.dot(F, 1/m) - np.cross(w, vc)
+        return dvcdt
+
+    def getVelocityInertial(self):
+        """慣性系の速度を取得する."""
+        vel_inertial = self.bodyVector2InertialVector(self.velocityBody)
+        return vel_inertial
 
 
 def testRotation(omega):
@@ -163,7 +172,7 @@ def testRotation(omega):
     return nx, ny, nz
 
 
-def testInertialVectorInBodyFrame():
+def testinertialVector2BodyVector():
     """ベクトルを機体座標系で正しく表現できているかのテスト."""
     psi = pi/3
     the = pi/6
@@ -179,7 +188,7 @@ def testInertialVectorInBodyFrame():
 
     test_q = [cos(psi/2), 0.0*sin(psi/2), 0.0*sin(psi/2), 1.0*sin(psi/2)]
     att.quartanion = np.array(test_q)
-    xb_test = att.inertialVectorInBodyFrame(xi)
+    xb_test = att.inertialVector2BodyVector(xi)
 
     print(f'error: {xb_test},{xb_answer}')
     print(f'error: {np.cross(xb_test,xb_answer)}')
@@ -193,4 +202,4 @@ if __name__ == '__main__':
     print(testRotation([0, 2*pi, 2*pi]))
     print(testRotation([2*pi, 0, 2*pi]))
     print(testRotation([2*pi, 2*pi, 2*pi]))
-    print(testInertialVectorInBodyFrame())
+    print(testinertialVector2BodyVector())
