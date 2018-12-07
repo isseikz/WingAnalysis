@@ -31,18 +31,17 @@ def getYXZRotationMatrixFrom(roll, pitch, yaw):
     return rotationMatrix
 
 
-def rotationalSpeed(blade_root, element_pos, wing_attitude, angularVel_body):
+def rotationalAirspeed(position, angularVel_body):
     """翼素の回転によって生じる対気速度ベクトルを機体座標系で計算する.
 
-    翼素は機体に固定された極座標系で表現する
-    blade_root: ブレードの根本の座標
-    element_position: ブレードの根本からの距離
-    wing_attitude: 翼素の姿勢(オイラー角)
+    翼素は機体に固定された極座標系で表現する.
+    ブレードの桁線は直線状とする.
+    position(x, y, z): 機体座標系上の翼素の位置
+    angularVel_body(p, q, r)
     """
-    rot = getYXZRotationMatrixFrom(0.0, wing_attitude[0], wing_attitude[2])
-    bladeDirection = np.dot(rot, [0.0, 1.0, 0.0])
-    position = blade_root + np.dot(element_pos, bladeDirection)
-
+    # position = np.array([x, y, z])
+    # angularVel_body = np.array([p, q, r])
+    # print(position, angularVel_body)
     rotationSpeed = - np.cross(position, angularVel_body)
     return rotationSpeed
 
