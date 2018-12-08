@@ -12,7 +12,7 @@ def getYXZRotationMatrixFrom(roll, pitch, yaw):
     * 回転順序がヨー→ロール→ピッチであることに注意.
     * 上反角を先に指定するため
     """
-    Ryaw =  np.array([
+    Ryaw = np.array([
         [cos(yaw), -sin(yaw), 0],
         [sin(yaw), cos(yaw), 0],
         [0, 0, 1]
