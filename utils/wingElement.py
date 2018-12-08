@@ -57,7 +57,7 @@ def flowVelocityForWingElement(flow_body, wing_attitude):
     return flow_wing
 
 
-def aeroforce(func_airfoil, rho, u):
+def aeroPressure(func_airfoil, rho, u):
     """翼型, 翼素固定座標系上の流速, 迎角から翼素に働く圧力を求める."""
     alpha = atan2(u[2], u[0])
     Cl, Cd = func_airfoil(alpha)
