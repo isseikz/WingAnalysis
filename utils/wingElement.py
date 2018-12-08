@@ -60,7 +60,7 @@ def flowVelocityForWingElement(flow_body, wing_attitude):
 def aeroPressure(func_airfoil, rho, u0, u1, u2):
     """翼型, 翼素固定座標系上の流速, 迎角から翼素に働く圧力を求める."""
     alpha = atan2(-u2, -u0)
-    print(alpha, u2, u0)
+    # print(alpha, u2, u0)
     Cl, Cd = func_airfoil(alpha)
     rot = np.array([
         [cos(alpha), sin(alpha)],
