@@ -64,59 +64,45 @@ def getRotationalAirSpeed(pqr, arrPosWingElems, n_elements):
     return arrRotation
 
 
-def testRotationSpeed():
-    """'wingelement' モジュールと組み合わせて回転速度が正しい値となるかのチェック."""
-    n_elements = 10
-    root_position = [0.0, 0.06, 0.0]
-    blade_atittude = [0.0 * pi/180, -80.0* pi/180, 0.0 * pi/180]
-    blade_length = 0.13
-    chord_length = 0.1
-
-    arrPosWingElems = getPositionsOfWingElements(
-        n_elements,
-        root_position,
-        blade_atittude,
-        blade_length
-    )
-    # print(arrPosWingElems)
-
-    # 翼素ごとの回転による対気速度(機体座標系)
-    pqr = np.array([0.0, 0.0, -1.0])
-    # arrRotation = np.zeros((3, n_elements+1), dtype=float)
-    # for i in range(n_elements+1):
-    #     pos = arrPosWingElems[:, i]
-    #     arrRotation[:, i] = we.rotationalAirspeed(pos, pqr)
-    # print(arrRotation)
-    arrRotation = getRotationalAirSpeed(pqr, arrPosWingElems, n_elements)
-
-    # 翼素ごとの対気速度(翼素座標系)
-    velocity_body = np.array([0.0, 0.0, 9.8])
+def getAirSpeed(uvw, arrRotation, blade_attitude):
+    """翼素ごとの対気速度(翼素座標系)."""
     arrAeroVelocity = arrRotation
     for i in range(arrAeroVelocity.shape[1]):
-        arrAeroVelocity[:,i] -= velocity_body
+        arrAeroVelocity[:,i] -= uvw
         # 翼素座標系に変換
         rot = mf.getYXZRotationMatrixFrom(
-            roll = -blade_atittude[0],
-            pitch = -blade_atittude[1],
-            yaw = -blade_atittude[2]
+            roll = -blade_attitude[0],
+            pitch = -blade_attitude[1],
+            yaw = -blade_attitude[2]
         )
         arrAeroVelocity[:,i] = np.dot(rot, arrAeroVelocity[:,i])
-    print(arrAeroVelocity)
+    return arrAeroVelocity
 
+
+def getPressureInWingElem(arrAeroVelocity, blade_attitude, airfoil):
+    """翼素ごとの圧力(機体座標系)."""
     # 翼素ごとの圧力(翼素座標系)
-    listPressure = np.frompyfunc(we.aeroPressure, 5, 1)(af.NACA0012_181127, 1.295, arrAeroVelocity[0,:], arrAeroVelocity[1,:], arrAeroVelocity[2,:])
-    arrPressure = np.zeros((3,n_elements+1), dtype=float)
-    for i in range(n_elements+1):
+    listPressure = np.frompyfunc(we.aeroPressure, 5, 1)(airfoil, 1.295, arrAeroVelocity[0,:], arrAeroVelocity[1,:], arrAeroVelocity[2,:])
+    arrPressure = np.zeros((3,arrAeroVelocity.shape[1]), dtype=float)
+    for i in range(arrAeroVelocity.shape[1]):
         arrPressure[0,i] = listPressure[i][0]
         arrPressure[2,i] = listPressure[i][1]
-    print(arrPressure)
+
+    rot = mf.getYXZRotationMatrixFrom(
+        roll = -blade_attitude[0],
+        pitch = -blade_attitude[1],
+        yaw = -blade_attitude[2]
+    )
 
     # 翼素ごとの圧力(機体座標系)
     for i in range(arrPressure.shape[1]):
         rot_inv = np.linalg.inv(rot)
-        arrPressure[:,i] = np.dot(rot, arrPressure[:,i])
-    print(arrPressure)
+        arrPressure[:,i] = np.dot(rot_inv, arrPressure[:,i])
+    return arrPressure
 
+
+def getBladeForceMoment(arrPressure, arrPosWingElems, chord_length, blade_length, n_elements):
+    """ブレード全体の力を求める."""
     # 翼素に働く力と，モーメントを求める
     arrdForce= arrPressure * chord_length * blade_length / n_elements
     arrdMoments = np.zeros((3,n_elements+1), dtype=float)
@@ -129,10 +115,46 @@ def testRotationSpeed():
     for i in range(n_elements//2):
         sumF += arrdForce[:,i*2] + 4 * arrdForce[:,i*2+1] + arrdForce[:,i*2+2]
         sumM += arrdMoments[:,i*2] + 4 * arrdMoments[:,i*2+1] + arrdMoments[:,i*2+2]
-    print(sumF, sumM)
+    return sumF/3, sumM/3
 
+
+def tutorial_one_blade():
+    """ある設定のブレードを持つ機体(u,v,w,p,q,r)に働く力・モーメントを求めるデモ"""
+    # 翼の設定
+    n_elements = 10
+    root_position = [0.0, 0.06, 0.0]
+    blade_atittude = [0.0 * pi/180, -80.0* pi/180, 0.0 * pi/180]
+    blade_length = 0.13
+    chord_length = 0.1
+    airfoil = af.NACA0012_181127
+
+    arrPosWingElems = getPositionsOfWingElements(
+        n_elements,
+        root_position,
+        blade_atittude,
+        blade_length
+    )
+
+    # 機体の運動(仮設定)
+    pqr = np.array([0.0, 0.0, -1*2*pi])
+    uvw = np.array([0.0, 0.0, 9.8])
+
+    # 翼素ごとの回転による対気速度(機体座標系)
+    arrRotation = getRotationalAirSpeed(pqr, arrPosWingElems, n_elements)
+    print('\r\n  --- AirSpeed only from the rotation ---\r\n',arrRotation)
+
+    # 翼素ごとの対気速度(翼素座標系)
+    arrAeroVelocity = getAirSpeed(uvw, arrRotation, blade_atittude)
+    print('\r\n  --- AirSpeed (Wing Frame) --- \r\n',arrAeroVelocity)
+
+    # 翼素ごとの圧力(機体座標系)
+    arrPressure = getPressureInWingElem(arrAeroVelocity, blade_atittude, airfoil)
+    print('\r\n  --- Pressure distribution (Body Frame) --- \r\n',arrPressure)
+
+    sumF, sumM = getBladeForceMoment(arrPressure, arrPosWingElems, chord_length, blade_length, n_elements)
+    print('\r\n  --- Force and moment of the blade (Body Frame) ---\r\n',sumF, sumM)
 
 
 if __name__ == '__main__':
     # testGetpositionsOfWingElements()
-    testRotationSpeed()
+    tutorial_one_blade()
