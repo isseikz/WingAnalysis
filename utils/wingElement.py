@@ -12,7 +12,7 @@ def getYXZRotationMatrixFrom(roll, pitch, yaw):
     * 回転順序がヨー→ロール→ピッチであることに注意.
     * 上反角を先に指定するため
     """
-    Ryaw = np.array([
+    Ryaw =  np.array([
         [cos(yaw), -sin(yaw), 0],
         [sin(yaw), cos(yaw), 0],
         [0, 0, 1]
@@ -42,7 +42,7 @@ def rotationalAirspeed(position, angularVel_body):
     # position = np.array([x, y, z])
     # angularVel_body = np.array([p, q, r])
     # print(position, angularVel_body)
-    rotationSpeed = - np.cross(position, angularVel_body)
+    rotationSpeed = np.cross(position, angularVel_body)
     return rotationSpeed
 
 
@@ -57,17 +57,18 @@ def flowVelocityForWingElement(flow_body, wing_attitude):
     return flow_wing
 
 
-def aeroPressure(func_airfoil, rho, u):
+def aeroPressure(func_airfoil, rho, u0, u1, u2):
     """翼型, 翼素固定座標系上の流速, 迎角から翼素に働く圧力を求める."""
-    alpha = atan2(u[2], u[0])
+    alpha = atan2(-u2, -u0)
+    print(alpha, u2, u0)
     Cl, Cd = func_airfoil(alpha)
     rot = np.array([
         [cos(alpha), sin(alpha)],
         [-sin(alpha), cos(alpha)]
     ])
-    pressure = 0.5 * rho * (u[0] ** 2 + u[2]**2) * np.dot(rot, [Cd, Cl])
+    pressure = 0.5 * rho * (u0 ** 2 + u2**2) * np.dot(rot, [-Cd, -Cl])
 
-    return pressure
+    return pressure[0], pressure[1]
 
 
 def test_flowVelocityForWingElement(test_flow, test_attitude, true_attitude):

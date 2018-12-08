@@ -41,5 +41,5 @@ def NACA0012_181127(alpha):
     else:
         print('Error')
         Cd = alphaDeg / 10
-    # print(f'Alpha: {alpha}, Cl: {Cl}')
+    # print(f'Alpha: {alpha}, Cl: {Cl}, Cd: {Cd}')
     return Cl, Cd
