@@ -138,20 +138,20 @@ def main():
 
     # 状態量の初期化
     x0 = np.zeros((13), dtype=float)
-    x0[0:4] = att.quartanion
+    x0[0:4] = att.setQuartanionFrom(0.0, 1.0*pi/180, 0.0*pi/180)
     x0[4:7] = att.omegaBody
     # x0[7:10]: position of the model
     x0[10:13] = att.velocityBody
 
     t0 = 0.0
-    tf = 1.0
+    tf = 5.0
     dt = 0.001
 
     F = np.array([0.0, 0.0, 0])
     M = np.array([0.0, 0.0, 0])
 
     # ODEの設定
-    solver = ode(func).set_integrator('vode', method='bdf')
+    solver = ode(func).set_integrator('dopri5', method='bdf')
     solver.set_initial_value(x0, t0)
     solver.set_f_params(att, solver.y, F, M)
     x = np.zeros([int((tf-t0)/dt)+1, 13])
@@ -159,6 +159,7 @@ def main():
     F_log = np.zeros((int((tf-t0)/dt)+1, 3))
     M_log = np.zeros((int((tf-t0)/dt)+1, 3))
 
+    # TODO: solver.yのクオータニオン地を正規化しなければならない
     index = 0
     while solver.successful() and solver.t < tf:
         solver.integrate(solver.t+dt)

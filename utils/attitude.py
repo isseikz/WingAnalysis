@@ -4,6 +4,7 @@
 import numpy as np
 from numpy.linalg import inv
 from math import sin, cos, pi, sqrt
+import math_function as mf
 
 
 class Attitude6DoF(object):
@@ -26,6 +27,11 @@ class Attitude6DoF(object):
         ])
         self.weight = 0.1
         self.position = np.array([0.0, 0.0, 0.0])
+
+    def setQuartanionFrom(self, roll, pitch, yaw):
+        """オイラー角からクオータニオンをセットする."""
+        self.quartanion = mf.euler2Quartanion(roll, pitch, yaw)
+        return self.quartanion
 
     def rotationOfPositionVector(self, r):
         """位置ベクトルを回転クオータニオンに基づき回転させる.

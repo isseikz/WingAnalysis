@@ -27,3 +27,20 @@ def getYXZRotationMatrixFrom(roll=0.0, pitch=0.0, yaw=0.0):
     ])
     rotationMatrix = np.dot(Rpitch, np.dot(Rroll, Ryaw))
     return rotationMatrix
+
+
+def euler2Quartanion(roll, pitch, yaw):
+    """オイラー角をクオータニオンに変換する."""
+    cosR_2 = cos(roll/2)
+    sinR_2 = sin(roll/2)
+    cosP_2 = cos(pitch/2)
+    sinP_2 = sin(pitch/2)
+    cosY_2 = cos(yaw/2)
+    sinY_2 = sin(yaw/2)
+
+    q0 = cosR_2 * cosP_2 * cosY_2 + sinR_2 * sinP_2 * sinY_2
+    q1 = sinR_2 * cosP_2 * cosY_2 - cosR_2 * sinP_2 * sinY_2
+    q2 = cosR_2 * sinP_2 * cosY_2 + sinR_2 * cosP_2 * sinY_2
+    q3 = cosR_2 * cosP_2 * sinY_2 - sinR_2 * sinP_2 * cosY_2
+
+    return np.array([q0, q1, q2, q3])
