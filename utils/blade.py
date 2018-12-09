@@ -131,6 +131,26 @@ def getBladeForceMoment(arrP, arrPosWE, chord_len, blade_len, n_elem):
     return sumF/3, sumM/3
 
 
+class Blade(object):
+    """docstring for Blade."""
+
+    def __init__(self, n_elem, pos_root, att, b_len, c_len, airfoil):
+        """初期化."""
+        super(Blade, self).__init__()
+        self.n_elements = n_elem
+        self.root_position = pos_root
+        self.blade_attitude = att
+        self.blade_length = b_len
+        self.chord_length = c_len
+        self.airfoil = airfoil
+        self.arrPosWingElems = getPositionsOfWingElements(
+            self.n_elements,
+            self.root_position,
+            self.blade_attitude,
+            self.blade_length
+        )
+
+
 def tutorial_one_blade():
     """ある設定のブレードを持つ機体(u,v,w,p,q,r)に働く力・モーメントを求めるデモ."""
     # 翼の設定

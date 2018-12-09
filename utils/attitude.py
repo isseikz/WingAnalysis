@@ -24,6 +24,8 @@ class Attitude6DoF(object):
             [0, 0.0001,        0],
             [0, 0, 0.00020633122]
         ])
+        self.weight = 0.1
+        self.position = np.array([0.0, 0.0, 0.0])
 
     def rotationOfPositionVector(self, r):
         """位置ベクトルを回転クオータニオンに基づき回転させる.
@@ -116,6 +118,12 @@ class Attitude6DoF(object):
         self.quartanion /= self.normOfQuartanion()  # 正規化
         return self.quartanion
 
+    def updateQuartanionODE(self, quartanion):
+        """Scipy odeで求めたquartanionをもちいて 更新."""
+        self.quartanion += quartanion
+        self.quartanion /= self.normOfQuartanion()  # 正規化
+        return self.quartanion
+
     def calcDerivativeOfOmegaBody(self, moment_body):
         """機体座標系の角速度の微分をモーメントと現在の状態から求める.
 
@@ -140,7 +148,7 @@ class Attitude6DoF(object):
         """現在の姿勢から, 重力を機体座標系の成分に分解する."""
         g_inertial = np.array([0.0, 0.0, 9.81])
         g_body = self.inertialVector2BodyVector(g_inertial)
-        return g_body
+        return g_body * self.weight
 
     def calcDerivativeOfVelocityBody(self, force_body):
         """機体座標系の力から機体座標系上の機体速度の時間微分を求める."""
