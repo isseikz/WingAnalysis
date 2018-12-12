@@ -102,8 +102,7 @@ def getPressureInWingElem(arrAeroVelocity, blade_attitude, airfoil):
 
     # 翼素ごとの圧力(機体座標系)
     for i in range(arrPressure.shape[1]):
-        rot_inv = np.linalg.inv(rot)
-        arrPressure[:, i] = np.dot(rot_inv, arrPressure[:, i])
+        arrPressure[:, i] = np.dot(rot.T, arrPressure[:, i])
     return arrPressure
 
 
@@ -121,6 +120,8 @@ def getBladeForceMoment(arrP, arrPosWE, chord_len, blade_len, n_elem):
     arrdM = np.zeros((3, n_elem+1), dtype=float)
     for i in range(n_elem+1):
         arrdM[:, i] = np.cross(arrPosWE[:, i], arrdF[:, i])
+    print(f'arrdM: {arrdM}')
+    print(f'arrdF: {arrdF}')
 
     # 翼素に働く力をシンプソン積分して，ブレード全体の力を求める
     sumF = np.zeros((3), dtype=float)
@@ -169,7 +170,7 @@ def tutorial_one_blade():
     )
 
     # 機体の運動(仮設定)
-    pqr = np.array([0.0, 0.0, -1*2*pi])
+    pqr = np.array([0.0, 0.0, -0.0*2*pi])
     uvw = np.array([0.0, 0.0, 9.8])
 
     # 翼素ごとの回転による対気速度(機体座標系)

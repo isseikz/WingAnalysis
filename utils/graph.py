@@ -23,10 +23,17 @@ def load_FM(path):
     return t, data
 
 
+def load_distribution_of_P(path):
+    """翼の圧力分布を読み込む."""
+    arrP = np.load(path)
+    return arrP
+
+
 if __name__ == '__main__':
     t, q, pqr, xyz_i, uvw = load_x('x_1.npy')
     t, F = load_FM('F_1.npy')
     t, M = load_FM('M_1.npy')
+    distP = load_distribution_of_P('dist_df.npy')
 
     fig, ax = plt.subplots(nrows=2, ncols=3, sharex=True)
     ax[0, 0].plot(t, q)
@@ -57,4 +64,24 @@ if __name__ == '__main__':
         ax[1, col].set_xlabel('time[s]', fontname='serif')
 
     plt.tight_layout()
+
+    _sP = distP.shape
+
+    label_crd = ['x', 'y', 'z']
+    x = t
+    y = np.arange(_sP[3])
+    X, Y = np.meshgrid(y, x)
+    figP, axp = plt.subplots(
+        nrows=_sP[2],
+        ncols=_sP[1],
+        sharex=True,
+        sharey=True
+    )
+    for i in range(_sP[1]):
+        for j in range(_sP[2]):
+            im = axp[j, i].pcolormesh(X, Y, distP[0:_sP[0]-1, i, j, 0:10])
+            figP.colorbar(im, ax=axp[j, i])
+            axp[j, i].set_title(f'{label_crd[j]} of #{i} blade')
+    plt.tight_layout()
+
     plt.show()

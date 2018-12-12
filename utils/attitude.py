@@ -126,7 +126,7 @@ class Attitude6DoF(object):
 
     def updateQuartanionODE(self, quartanion):
         """Scipy odeで求めたquartanionをもちいて 更新."""
-        self.quartanion += quartanion
+        self.quartanion = quartanion
         self.quartanion /= self.normOfQuartanion()  # 正規化
         return self.quartanion
 
@@ -142,6 +142,7 @@ class Attitude6DoF(object):
         h = np.dot(I_body, w)  # 角運動量
 
         dwdt = np.dot(I_inv, (M - np.cross(w, h)))
+        print(f"CDO: {M}, {np.cross(w, h)}")
         return dwdt
 
     def updateOmegaBody(self, dt, moment_body):

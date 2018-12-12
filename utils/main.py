@@ -20,6 +20,7 @@ def blade_FM(x, blades, disp=True):
     arrFM = np.zeros((n_blade, 2, 3), dtype=float)
     sumF = np.zeros(3, dtype=float)
     sumM = np.zeros(3, dtype=float)
+    arrPressures = np.zeros((n_blade, 3, 11))
 
     for id, b in enumerate(blades):
         if disp:
@@ -55,12 +56,14 @@ def blade_FM(x, blades, disp=True):
             b.blade_attitude,
             b.airfoil
         )
+        arrPressures[id, :, :] = arrPressure
         if disp:
             print(
                 '\r\n  --- Pressure distribution (Body Frame) --- \r\n',
                 arrPressure
             )
 
+        # ブレード全体の力・モーメント（機体座標系）
         F, M = blade.getBladeForceMoment(
             arrPressure,
             b.arrPosWingElems,
@@ -80,7 +83,7 @@ def blade_FM(x, blades, disp=True):
         sumF += F
         sumM += M
 
-    return sumF, sumM
+    return sumF, sumM, arrPressures
 
 
 def func(model, x, F, M):
@@ -93,7 +96,7 @@ def func(model, x, F, M):
     # 速度の更新
     vel_inertial = model.getVelocityInertial()
     # クオータニオンの時間微分の更新
-    omega_inertial = model.rotationOfPositionVector(x[4:7])
+    omega_inertial = model.bodyVector2InertialVector(x[4:7])
     q_dot = model.calcDerivativeOfQuartanion(omega_inertial)
     f = np.hstack((q_dot, omega_dot, vel_inertial, accel))
     return f
@@ -102,26 +105,30 @@ def func(model, x, F, M):
 def postProcess(model, x):
     """積分計算後の値をモデルに更新する."""
     model.updateQuartanionODE(x[0:4])
-    model.omega_body = x[4:7]
+    model.omegaBody = x[4:7]
     model.position = x[7:10]
     model.velocityBody = x[10:13]
     print('Quartanion: ', x[0:4])
     print('PQR: ', x[4:7])
     print('Position: ', x[7:10])
     print('Velocity: ', x[10:13])
+    x[0:4] = model.quartanion
+    return x
 
 
 def main():
     """実行用関数."""
     # クオータニオンモジュールの初期化.
     att = attitude.Attitude6DoF()
+    att.omegaBody = [0.0, 0.0*pi/180, 0.0*pi/180]
 
     # ブレードの初期化（複数の翼をつける場合は逐次appendする）
+    blade_pitch = -80.0
     Blades = []
     Blades.append(blade.Blade(
         n_elem=10,
-        pos_root=[0.0, 0.06, 0.0],
-        att=[0.0 * pi / 180, -80.0 * pi/180, 0.0 * pi/180],
+        pos_root=[0.0, 0.06, -0.05],
+        att=[0.0 * pi / 180, blade_pitch * pi/180, 0.0 * pi/180],
         b_len=0.13,
         c_len=0.1,
         airfoil=af.NACA0012_181127
@@ -129,8 +136,26 @@ def main():
 
     Blades.append(blade.Blade(
         n_elem=10,
-        pos_root=[0.0, -0.06, 0.0],
-        att=[0.0 * pi / 180, -80.0 * pi/180, 180.0 * pi/180],
+        pos_root=[0.0, -0.06, -0.05],
+        att=[0.0 * pi / 180, blade_pitch * pi/180, 180.0 * pi/180],
+        b_len=0.13,
+        c_len=0.1,
+        airfoil=af.NACA0012_181127
+    ))
+
+    Blades.append(blade.Blade(
+        n_elem=10,
+        pos_root=[0.06, 0.0, -0.05],
+        att=[0.0 * pi / 180, blade_pitch * pi/180, 270.0 * pi/180],
+        b_len=0.13,
+        c_len=0.1,
+        airfoil=af.NACA0012_181127
+    ))
+
+    Blades.append(blade.Blade(
+        n_elem=10,
+        pos_root=[-0.06, 0.0, -0.05],
+        att=[0.0 * pi / 180, blade_pitch * pi/180, 90.0 * pi/180],
         b_len=0.13,
         c_len=0.1,
         airfoil=af.NACA0012_181127
@@ -138,14 +163,14 @@ def main():
 
     # 状態量の初期化
     x0 = np.zeros((13), dtype=float)
-    x0[0:4] = att.setQuartanionFrom(0.0, 1.0*pi/180, 0.0*pi/180)
+    x0[0:4] = att.setQuartanionFrom(5.0*pi/180, 0.0*pi/180, 0.0*pi/180)
     x0[4:7] = att.omegaBody
     # x0[7:10]: position of the model
     x0[10:13] = att.velocityBody
 
     t0 = 0.0
-    tf = 5.0
-    dt = 0.001
+    tf = 2.0
+    dt = 0.0001
 
     F = np.array([0.0, 0.0, 0])
     M = np.array([0.0, 0.0, 0])
@@ -158,21 +183,25 @@ def main():
     t = np.zeros([int((tf-t0)/dt)+1, 1])
     F_log = np.zeros((int((tf-t0)/dt)+1, 3))
     M_log = np.zeros((int((tf-t0)/dt)+1, 3))
+    arrP_log = np.zeros((int((tf-t0)/dt)+1, len(Blades), 3, 11), dtype=float)
 
     # TODO: solver.yのクオータニオン地を正規化しなければならない
     index = 0
-    while solver.successful() and solver.t < tf:
+    while solver.successful() and solver.t < tf and index < int((tf-t0)/dt)+1:
         solver.integrate(solver.t+dt)
         x[index] = solver.y
         t[index] = solver.t
 
         print(solver.y)
-        F, M = blade_FM(solver.y, Blades)
+        F, M, arrPressures = blade_FM(solver.y, Blades)
         F_log[index] = F
         M_log[index] = M
+        arrP_log[index, :, :, :] = arrPressures
+        xt = postProcess(att, solver.y)
+        solver.set_initial_value(xt, solver.t)
 
         solver.set_f_params(att, solver.y, F, M)
-        postProcess(att, solver.y)
+
         index += 1
 
     x_log = np.hstack((t, x))
@@ -182,6 +211,7 @@ def main():
     np.save('x_1', x_log)
     np.save('M_1', M_log)
     np.save('F_1', F_log)
+    np.save('dist_df', arrP_log)
 
 
 if __name__ == '__main__':
